@@ -1,0 +1,495 @@
+{% extends 'layouts/default/page.html' %}
+{% load static %}
+
+
+{% block content %}
+<!-- breadcrumbs -->
+	<div class="breadcrumbs">
+		<div class="container">
+			<ol class="breadcrumb breadcrumb1">
+				<li><a href="{% url 'index' %}"><span class="glyphicon glyphicon-home" aria-hidden="true"></span>Home</a></li>
+				<li class="active">Checkout Page</li>
+			</ol>
+		</div>
+	</div>3
+<!-- //breadcrumbs -->
+<!-- checkout -->
+	<div class="checkout">
+		<div class="container">
+			<h2>Your shopping cart contains: <span></span></h2>
+			<div class="checkout-right">
+				{% if dispatch %}
+				<table class="timetable_sub">
+					<thead>
+						<tr>
+							<th>SL No.</th>	
+							<th>Order_id</th>
+							<th>Order_date</th>
+							<th>Order From</th>
+							<th>Dispatch_Date</th>
+							<th>Price</th>
+							<th>LR</th>
+							<th>Status</th>
+						</tr>
+					</thead>
+					{% for item in object %}
+					<tr class="rem{{forloop.counter}}">
+						<td class="invert">{{forloop.counter}}</td>
+						<td class="invert" id = "product{{item.item.id}}">{{item.id}}</td>
+						<td class="invert">{{item.ordered_date}}</td>
+						<td class="invert">{{ item.user}}</td>
+						<td class="invert">
+							{% if item.dispatched %}
+							 <a>{{item.dispatched_date.date}}</a>
+							{% else %}
+							 N A 
+							{% endif %}
+					</td>
+						<td class="invert" id="price{{item.item.id}}">{{ item.final_price }}</td>
+
+						<td class="invert"><a href="{% if item.lr %} {{item.lr.url}} {% else %} {% url 'lr_upload' item.id %} {% endif %}">LR</a></td>
+						<td class="invert">
+								{% if item.dispatched %}
+								<a href="{% url 'generate_dispatch_pdf' item.id %}" style="color: darkgreen;"> Dispatch Challan </a>
+								{% else %}
+								<a href="{% url 'dispatch-order' item.id %}" style="color: red;"> Dispatch </a> 
+								{% endif %}
+						</td>
+					</tr>
+					{% endfor %}
+				</table>
+				{% elif dispatch_final %}
+				<table class="timetable_sub">
+					<thead>
+						<tr>
+							<th>SL No.</th>	
+							<th>Product</th>
+							<th>Product Name</th>
+							<th>Required</th>
+							<th>Quanity</th>
+							<th>Per Piece</th>
+							<th>Price</th>
+							<th>Remove</th>
+							<th>Stock</th>
+						</tr>
+					</thead>
+					{% for item in object.items.all %}
+					<tr class="rem{{forloop.counter}}">
+						<td class="invert">{{forloop.counter}}</td>
+						<td class="invert-image" ><a href="{{item.item.get_absolute_url}}"><img src="{{item.item.image.url}}" alt=" " class="img-responsive" height="40%" width="40%" /></a></td>
+						<td class="invert">{{ item.item.title }}</td>
+						<td class="invert">{% if  item.special_requirement %}
+							{{item.special_requirement}} {% endif %}<br> {{ item.quantity }}</td>
+
+						<td class="invert">
+							<div class="quantity"> 
+								<input type="number" id="quantity{{item.id}}" name="quantity" min="1" value = {{item.quantity}}>
+								<button onclick="myFunction{{item.item.id}}()">UpdateQuantity</button>
+							</div>
+					</td>
+					<td class="invert">{{item.per_piece}}</td>
+						<td class="invert" id="price{{item.item.id}}">{{ item.total_price }}</td>
+						<td class="invert" >
+							<div class="rem">
+								<div id="close{{forloop.counter}}"> <button style="color: white; background-color:blueviolet; font-weight: 300;"><strong> Remove </strong></button></div>
+							</div>
+							<script>$(document).ready(function(c) {
+								{% for item in object.items.all %}
+								$('#close{{forloop.counter}}').on('click', function(c){
+									
+									$('.rem{{forloop.counter}}').fadeOut('slow', function(c){
+										$('.rem{{forloop.counter}}').remove();
+									});
+									var id = "{{object.id}}";
+									var orderitem = '{{item.id}}';
+
+									updatequantity(0,orderitem,id,1);
+									
+									});	  
+									{% endfor %}
+									
+								});
+						   </script>
+						</a></td>
+						<td class="invert" >
+							<div class="rem">
+								<div id="stock{{forloop.counter}}"> <button style="color: white; background-color: rgb(219, 18, 28); font-weight: 300;"><strong> Out of Stock </strong></button></div>
+							</div>
+							<script>$(document).ready(function(c) {
+								{% for item in object.items.all %}
+								$('#stock{{forloop.counter}}').on('click', function(c){
+									
+									$('.rem{{forloop.counter}}').fadeOut('slow', function(c){
+										$('.rem{{forloop.counter}}').remove();
+									});
+									var id = "{{object.id}}";
+									var orderitem = '{{item.id}}';
+									var itemid = '{{item.item.id}}'
+									updatequantity(0,orderitem,id,1);
+									outofstock(itemid)									
+									});	  
+									{% endfor %}
+									
+								});
+						   </script>
+						</a></td>
+
+					</tr>
+					{% endfor %}
+								<!--quantity-->
+<script>filename = settings.MEDIA_ROOT +"/"+ fs.save(myfile.name, myfile)
+	{% for item in object.items.all %}
+	function myFunction{{item.item.id}}() {
+		
+		var quantity =document.getElementById("quantity{{item.id}}").value;
+		var id = "{{object.id}}";
+		var orderitem = '{{item.id}}';
+		document.getElementById("price{{item.item.id}}").innerHTML = quantity*{{item.per_piece}};
+		updatequantity(quantity,orderitem,id,1);
+        
+		updateCart(cart);
+	};
+	
+	{% endfor %}
+	</script>
+<!--quantity-->
+				</table>
+				<form action="{% url 'generate_dispatch_pdf' object.id %}" method="POST" enctype="multipart/form-data">
+					{% csrf_token %}
+					<label>Bill No</label>
+					<input type="text" name="bill_no"> <br>
+					<label for="Transport">Transport</label>
+					<select  name="Transport" id="Transport" required>
+                        {% for address in transport_list %}
+                        <option value="{{ address.id}}">{{ address.name }}</option>
+                        {% endfor %}
+					</select>  
+					<br>
+					<input type="file" name="uploadFromPC" id="uploadFromPC" >
+					<br>
+					<input type="submit" name="Invoice"> 
+				</form>
+				{% elif share_list %}
+				<table class="timetable_sub">
+					<thead>
+						<tr>
+							<th>SL No.</th>	
+							<th>Share id </th>
+							<th>Share</th>
+							<th>Share_link</th>
+							<th>Shared_with</th>
+							<th>Shared_status</th>
+							<th>Share Again</th>
+						</tr>
+					</thead>
+					{% for item in object %}
+					{% if item.url %}
+					<tr class="rem{{forloop.counter}}">
+						<td class="invert">{{forloop.counter}}</td>
+						<td class="invert">{{item.id}}</td>
+						<td class="invert">{{item.share}}</td>
+						<td class="invert"><a href="whatsapp://send?text={{ request.scheme }}://{{ request.get_host }}{% url 'generate_share_pdf' item.share.id %}"><i class="fa fa-whatsapp" aria-hidden="true"></i></a></td>
+						<td class="invert">{{ item.shared_user }}</td>
+						<td class="invert">
+							{% if item.share.shared %}
+							Shared 
+							{% else %}
+							
+							{% endif %}
+
+						</td>
+						<td class="invert"><a href="{% url 'share_out_page' item.share.id %}"><i class="fa fa-share" aria-hidden="true"></i>Share Again</a></td>
+					</tr>
+					{% endif %}
+					
+					{% endfor %}
+
+				</table>
+				{% elif order_list %}
+				{% if no_order %}
+				<h1>No Current Orders</h1>
+				{% else %}
+				<table class="timetable_sub">
+					<thead>
+						<tr>
+							<th>SL No.</th>	
+							<th>Order_id</th>
+							<th>Order_date</th>
+							<th>Order From</th>
+							<th>Price</th>
+							<th>Challan</th>
+							<th>Invoice</th>
+						</tr>
+					</thead>
+					{% for item in object %}
+					
+					<tr class="rem{{forloop.counter}}">
+						<td class="invert">{{forloop.counter}}</td>
+						<td class="invert" id = "product{{item.item.id}}">{{item.id}}</td>
+						<td class="invert">{{item.ordered_date}}</td>
+						<td class="invert">{{ item.user}}</td>
+						
+						<td class="invert" id="price{{item.item.id}}">{{ item.final_price }}</td>
+						<td class="invert">
+							{% if item.dispatched %}
+							<a href="{% url 'generate_dispatch_pdf' item.id %}"> Challan </a>
+							{% else %}
+							<p style="color: red;">Not dispatched</p>
+							{% endif %}
+						</td>
+						<td class="invert">
+							{% if item.ordered %}
+							<a href="{% url 'generate_invoice_pdf' item.id %}"> Invoice </a>
+							{% else %}
+							<a href="{% url 'order-summary' %}" style="color: red;"> Order Now </a> 
+							{% endif %}
+						</td>
+					</tr>
+					{% endfor %}
+				</table>
+				{% endif %}
+				{% else %}
+				{% if object.items.all %}
+				<table class="timetable_sub">
+					<thead>
+						<tr>
+							<th>SL No.</th>	
+							<th>Product</th>
+							<th>Id</th>
+							<th>Product Name</th>
+							<th>Quantity</th>
+							<th>Per pirce</th>
+							<th>Price</th>
+							<th>Remove</th>
+						</tr>
+					</thead>
+					{% for item in object.items.all %}
+					<tr class="rem{{forloop.counter}}">
+						<td class="invert">{{forloop.counter}}</td>
+						<td class="invert-image"><a href="{{item.item.get_absolute_url}}"><img src="{{item.item.image.url}}" alt=" " class="img-responsive" height="40%" width="40%" /></a></td>
+						<td class="invert" id = "product{{item.item.id}}">{{item.item.id}}</td>
+						<td class="invert">{{ item.item.title }}</td>
+						<td class="invert">
+							<div class="quantity"> 
+								<input type="text" id="special_requirement{{item.id}}" name="special_requirement" value= {% if  item.special_requirement %}
+								{{item.special_requirement}} {% endif %}>
+								<button onclick="myFunctionSpecial{{item.item.id}}()">special_requirement</button>
+							</div>
+								<div class="quantity"> 
+									<input type="number" id="quantity{{item.id}}" name="quantity" min="1" value = {{item.quantity}}>
+									<button onclick="myFunction{{item.item.id}}()">Update Quantity</button>
+								</div>
+						</td>
+						
+						<td class="invert" >{% if request.user.userprofile.rate_type %}{{ item.item.boxprice }} {% else %}
+              {{ item.item.price }} {% endif %}</td>
+						<td class="invert" id="price{{item.item.id}}">{{ item.get_total_item_price }}</td>
+						<td class="invert" >
+							<div class="rem">
+								<div id="close{{forloop.counter}}"> <button style="color: white; background-color: blueviolet; font-weight: 300;"><strong>Remove </strong></button></div>
+							</div>
+							<script>$(document).ready(function(c) {
+								{% for item in object.items.all %}
+								$('#close{{forloop.counter}}').on('click', function(c){
+									
+									$('.rem{{forloop.counter}}').fadeOut('slow', function(c){
+										$('.rem{{forloop.counter}}').remove();
+									});
+									var id = "{{object.id}}";
+									var orderitem = '{{item.item.id}}';
+									
+									cart = JSON.parse(sessionStorage.getItem('cart'));
+									console.log(cart)
+        							delete cart['pr{{item.item.id}}'];
+									updateCart(cart);
+									updatequantity(0,orderitem,id,0);
+
+									
+									});	
+									
+									{% endfor %}
+									
+								});
+						   </script>
+						</a></td>
+					</tr>
+					{% endfor %}
+					<!--quantity-->
+<script>
+	{% for item in object.items.all %}
+	function myFunction{{item.item.id}}() {
+		
+		var quantity =document.getElementById("quantity{{item.id}}").value;
+		var id = "{{object.id}}";
+		var orderitem = '{{item.item.id}}';
+		document.getElementById("price{{item.item.id}}").innerHTML = quantity*{% if request.user.userprofile.rate_type %}{{ item.item.boxprice }} {% else %}
+              {{ item.item.price }} {% endif %};
+		updatequantity(quantity,orderitem,id,0);
+        cart = JSON.parse(sessionStorage.getItem('cart'));
+        cart['pr{{item.item.id}}'] = [quantity,"{{item.item.slug}}",{{item.item.price}}];
+		updateCart(cart);
+	};
+	
+	{% endfor %}
+
+	{% for item in object.items.all %}
+	function myFunctionSpecial{{item.item.id}}() {
+
+		var quantity =document.getElementById("quantity{{item.id}}").value;
+		var special_requirement =document.getElementById("special_requirement{{item.id}}").value;
+		var id = "{{object.id}}";
+		var orderitem = '{{item.item.id}}';
+		var URL2 = "{% url 'quantityupdate' %}";
+		var csrftoken = '{{ csrf_token }}';
+		var data = {
+			'quantity':quantity,
+			'special_requirement': special_requirement,
+			"csrfmiddlewaretoken": csrftoken ,
+			"dispatch":0,
+			"pk": orderitem,
+			"item":orderitem,
+			"id":id,
+		};
+		console.log(special_requirement)
+        $.post(URL2, data);
+	};
+	
+	{% endfor %}
+	</script>
+<!--quantity-->
+				</table>
+			</div>
+			<div class="checkout-left">	
+				<div class="checkout-left-basket">
+					<h4>Continue to basket</h4>
+					<ul>
+						{% for item in object.items.all %}
+						<li>{{item.item.title}} <i>-</i> <span>{{ item.get_total_item_price }} </span></li>
+						{% endfor %}
+						<li>GST (5%) <i>-</i> <span><strong>{{object.get_total_tax}}</strong></span></li>
+						<li>Amount  <i>-</i> <span><strong>{{object.get_total}}</strong></span></li>
+						<li>Total <i>-</i> <span><strong>{{object.get_total_grand}}</strong></span></li>
+					</ul>
+				</div>
+			</div>
+			{% if object %}	
+			<div class="checkout-right">
+				
+				<div class="checkout-right-basket">
+					<a href="{% url 'product-list'  %}"><span class="glyphicon glyphicon-menu-left" aria-hidden="true"></span>Continue Shopping</a>
+				</div>
+			</div>
+			</br>
+			<div class="checkout-right">
+				<div class="checkout-right-basket">
+					<a href="{% url 'checkout_page' object.id %}"><span class="glyphicon glyphicon-menu-left" aria-hidden="true"></span>Checkout Now </a>
+				</div>
+			</div>
+			</br>
+					{% else %}
+					<div class="checkout-right">
+						<div class="checkout-right-basket">
+							<a href="{% url 'checkout_page' object.id %}"><span class="glyphicon glyphicon-menu-left" aria-hidden="true"></span>Checkout Now </a>
+						</div>
+					</div>
+					{% endif %}
+					
+				
+			</div>
+			{% else %}
+				<h2> Please Add Some Items  </h2>
+				<a href="{% url 'product-list'  %}"><span class="glyphicon glyphicon-menu-left" aria-hidden="true"></span>Continue Shopping</a>
+				{% endif %}
+			{% endif %}
+			
+		</div>
+	</div>
+			<div class="clearfix"> </div>
+			</div>
+		</div>
+	</div>
+<!-- //checkout -->
+{% endblock %}
+{% block footer_scripts %}
+<!-- Bootstrap Core JavaScript -->
+<script src="js/bootstrap.min.js"></script>
+<!-- top-header and slider -->
+<!-- here stars scrolling icon -->
+	<script type="text/javascript">
+		$(document).ready(function() {
+			/*
+				var defaults = {
+				containerID: 'toTop', // fading element id
+				containerHoverID: 'toTopHover', // fading element hover id
+				scrollSpeed: 1200,
+				easingType: 'linear' 
+				};
+			*/
+								
+			$().UItoTop({ easingType: 'easeOutQuart' });
+								
+			});
+		
+	</script>
+	
+<!-- //here ends scrolling icon -->
+<script src="js/minicart.min.js"></script>
+<script>
+	// Mini Cart
+	paypal.minicart.render({
+		action: '#'
+	});
+
+	if (~window.location.search.indexOf('reset=true')) {
+		paypal.minicart.reset();
+	}
+</script>
+<!-- main slider-banner -->
+<script src="js/skdslider.min.js"></script>
+<link href="css/skdslider.css" rel="stylesheet">
+
+<script type="text/javascript">
+
+		jQuery(document).ready(function(){
+			jQuery('#demo1').skdslider({'delay':5000, 'animationSpeed': 2000,'showNextPrev':true,'showPlayButton':true,'autoSlide':true,'animationType':'fading'});
+						
+			jQuery('#responsive').change(function(){
+			  $('#responsive_wrapper').width(jQuery(this).val());
+			});
+			
+		});
+</script>	
+<script>
+        var URL = "{% url 'quantityupdate' %}";
+        function updatequantity(quantity,itemid,orderid,dispatch){
+            var csrftoken = '{{ csrf_token }}';
+            var data = {
+                'quantity': quantity,
+                "csrfmiddlewaretoken": csrftoken ,
+				"dispatch":dispatch,
+                "pk": itemid,
+				"item":itemid,
+				"id":orderid,
+            };
+            $.post(URL, data);
+        }
+
+		var URL1 = "{% url  'out-of-stock' %}" ;
+		function outofstock(itemid){
+            var csrftoken = '{{ csrf_token }}';
+            var data = {
+                "csrfmiddlewaretoken": csrftoken ,
+                "pk": itemid,
+            };
+            $.post(URL1, data);
+        }
+
+
+</script>
+
+
+
+
+{% endblock %}
+<!-- //main slider-banner --> 
+
